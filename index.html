@@ -829,7 +829,7 @@
       .then(function(res){
         if (res.error){
           console.error("sign in failed", res.error);
-          showAuthStatus("ログインできなかったよ：" + (res.error.message || "もう一度試してね"));
+          showAuthStatus("ログインできなかったよ。パスワードが違うか、Googleで登録したメールアドレスかも。下の「Googleでログイン」もお試しね🔑");
         } else {
           authStatus.hidden = true;
           authPassword.value = "";
