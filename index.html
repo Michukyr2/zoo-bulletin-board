@@ -33,6 +33,7 @@
   }
 
   * { box-sizing: border-box; }
+  [hidden]{ display: none !important; }
 
   body{
     background: var(--paper);
@@ -213,6 +214,88 @@
     outline-offset: 1px;
   }
   #postForm textarea{ min-height: 110px; }
+
+  .account-bar{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    background: var(--mint-note);
+    border: 3px solid var(--ink);
+    border-radius: 16px;
+    padding: 12px 18px;
+    margin-bottom: 20px;
+    font-weight: bold;
+    font-size: 1.05rem;
+    color: var(--ink);
+  }
+  #signOutBtn{
+    font-family: inherit;
+    font-size: 1rem;
+    background: var(--white);
+    border: 3px solid var(--ink);
+    border-radius: 999px;
+    padding: 8px 20px;
+    cursor: pointer;
+  }
+  #signOutBtn:hover{ background: var(--paper); }
+
+  .auth-panel{
+    background: var(--sky-note);
+    border: 3px solid var(--ink);
+    border-radius: 20px;
+    padding: clamp(16px, 3vw, 26px);
+    margin-bottom: 20px;
+  }
+  .auth-lead{
+    font-weight: bold;
+    font-size: 1.1rem;
+    text-align: center;
+    margin: 0 0 16px;
+    color: var(--ink);
+  }
+  #authForm{ display: flex; flex-direction: column; gap: 16px; }
+  #authForm label{
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-weight: bold;
+    font-size: 1.05rem;
+    color: var(--ink-soft);
+  }
+  #authForm input{
+    font-family: inherit;
+    font-size: 1.1rem;
+    padding: 12px 14px;
+    border: 3px solid var(--ink);
+    border-radius: 14px;
+    background: var(--white);
+    color: var(--ink);
+  }
+  #authForm input:focus{
+    outline: 4px solid var(--sky);
+    outline-offset: 1px;
+  }
+  .auth-buttons{
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  #signInBtn, #signUpBtn{
+    font-family: "Mochiy Pop One", sans-serif;
+    font-size: 1rem;
+    border: 4px solid var(--ink);
+    border-radius: 999px;
+    padding: 12px 26px;
+    cursor: pointer;
+    transition: transform .1s ease;
+  }
+  #signInBtn{ background: var(--grass); color: var(--white); }
+  #signUpBtn{ background: var(--white); color: var(--ink); }
+  #signInBtn:hover, #signUpBtn:hover{ transform: translateY(2px); }
+  #signInBtn:disabled, #signUpBtn:disabled{ opacity: .6; cursor: default; transform: none; }
 
   .picker-label{
     display: block;
@@ -412,6 +495,29 @@
 
   <section class="post-desk" aria-labelledby="deskHeading">
     <h2 class="desk-header" id="deskHeading">📮 ひとこと、残していく？</h2>
+
+    <div class="account-bar" id="accountBar" hidden>
+      <span id="accountEmail"></span>
+      <button type="button" id="signOutBtn">ログアウト</button>
+    </div>
+
+    <div class="auth-panel" id="authPanel" hidden>
+      <p class="auth-lead">投稿するには、メールでログインしてね🔑</p>
+      <form id="authForm">
+        <label for="authEmail">メールアドレス
+          <input id="authEmail" type="email" autocomplete="email" required>
+        </label>
+        <label for="authPassword">パスワード（6文字以上）
+          <input id="authPassword" type="password" autocomplete="current-password" minlength="6" required>
+        </label>
+        <div class="auth-buttons">
+          <button type="submit" id="signInBtn">ログイン</button>
+          <button type="button" id="signUpBtn">はじめての人はこちら（新規登録）</button>
+        </div>
+        <p class="status" id="authStatus" role="status" hidden></p>
+      </form>
+    </div>
+
     <form id="postForm">
       <label for="nameInput">お名前（ニックネームでOK）
         <input id="nameInput" type="text" maxlength="20" placeholder="例：ぞうさん先輩" autocomplete="off">
@@ -492,6 +598,17 @@
   var offlineNote = document.getElementById("offlineNote");
   var board = document.getElementById("board");
   var emptyState = document.getElementById("emptyState");
+
+  var accountBar = document.getElementById("accountBar");
+  var accountEmail = document.getElementById("accountEmail");
+  var signOutBtn = document.getElementById("signOutBtn");
+  var authPanel = document.getElementById("authPanel");
+  var authForm = document.getElementById("authForm");
+  var authEmail = document.getElementById("authEmail");
+  var authPassword = document.getElementById("authPassword");
+  var authStatus = document.getElementById("authStatus");
+  var signInBtn = document.getElementById("signInBtn");
+  var signUpBtn = document.getElementById("signUpBtn");
 
   var selectedAnimal = ANIMALS[0].emoji;
   var supabaseClient = null;
@@ -629,6 +746,79 @@
     });
   }
 
+  function showAuthStatus(msg){
+    authStatus.textContent = msg;
+    authStatus.hidden = false;
+  }
+
+  function updateAuthUI(session){
+    var loggedIn = !!(session && session.user);
+    accountBar.hidden = !loggedIn;
+    if (loggedIn){
+      accountEmail.textContent = "ログイン中: " + (session.user.email || "");
+    }
+    authPanel.hidden = loggedIn;
+    form.hidden = !loggedIn;
+  }
+
+  authForm.addEventListener("submit", function(e){
+    e.preventDefault();
+    if (!supabaseClient) return;
+    var email = authEmail.value.trim();
+    var password = authPassword.value;
+    if (!email || !password){
+      showAuthStatus("メールアドレスとパスワードを入力してね");
+      return;
+    }
+    signInBtn.disabled = true;
+    supabaseClient.auth.signInWithPassword({ email: email, password: password })
+      .then(function(res){
+        if (res.error){
+          console.error("sign in failed", res.error);
+          showAuthStatus("ログインできなかったよ：" + (res.error.message || "もう一度試してね"));
+        } else {
+          authStatus.hidden = true;
+          authPassword.value = "";
+        }
+      })
+      .then(function(){ signInBtn.disabled = false; }, function(){ signInBtn.disabled = false; });
+  });
+
+  signUpBtn.addEventListener("click", function(){
+    if (!supabaseClient) return;
+    var email = authEmail.value.trim();
+    var password = authPassword.value;
+    if (!email || !password){
+      showAuthStatus("メールアドレスとパスワードを入力してね");
+      return;
+    }
+    if (password.length < 6){
+      showAuthStatus("パスワードは6文字以上にしてね");
+      return;
+    }
+    signUpBtn.disabled = true;
+    supabaseClient.auth.signUp({ email: email, password: password })
+      .then(function(res){
+        if (res.error){
+          console.error("sign up failed", res.error);
+          showAuthStatus("登録できなかったよ：" + (res.error.message || "もう一度試してね"));
+          return;
+        }
+        if (res.data && res.data.session){
+          authStatus.hidden = true;
+          authPassword.value = "";
+        } else {
+          showAuthStatus("確認メールを送ったよ📩 メール内のリンクを開いてから、ログインしてね");
+        }
+      })
+      .then(function(){ signUpBtn.disabled = false; }, function(){ signUpBtn.disabled = false; });
+  });
+
+  signOutBtn.addEventListener("click", function(){
+    if (!supabaseClient) return;
+    supabaseClient.auth.signOut();
+  });
+
   function supabaseConfigured(){
     return SUPABASE_URL && SUPABASE_ANON_KEY &&
       SUPABASE_URL.indexOf("YOUR_") !== 0 &&
@@ -673,6 +863,13 @@
       return;
     }
 
+    supabaseClient.auth.getSession().then(function(res){
+      updateAuthUI(res.data ? res.data.session : null);
+    });
+    supabaseClient.auth.onAuthStateChange(function(_event, session){
+      updateAuthUI(session);
+    });
+
     fetchAndRenderRemote();
 
     supabaseClient
@@ -703,7 +900,11 @@
         .then(function(res){
           if (res.error){
             console.error("insert failed", res.error);
-            showStatus("うまく貼れなかった…もう一度試してね");
+            if (res.error.code === "42501" || /row-level security/i.test(res.error.message || "")){
+              showStatus("投稿にはログインが必要だよ🔑");
+            } else {
+              showStatus("うまく貼れなかった…もう一度試してね");
+            }
           } else {
             savePref(name, selectedAnimal);
             messageInput.value = "";
