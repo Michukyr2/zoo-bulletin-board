@@ -1,0 +1,696 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>どうぶつえん掲示板</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Kosugi+Maru&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FFF6E0;
+    --cork:#E4B876;
+    --cork-dark:#C99655;
+    --ink:#3B2A1A;
+    --ink-soft:#5C4630;
+    --wood:#A9713F;
+    --wood-dark:#7C4F27;
+    --grass:#3FA34D;
+    --grass-deep:#2C7A38;
+    --sun:#FFC83D;
+    --tangerine:#FF8348;
+    --sky:#3FB6E8;
+    --bubblegum:#FF6FA0;
+    --grape:#8E63C9;
+    --cream-note:#FFE9A8;
+    --tan-note:#FFC9A1;
+    --mint-note:#BCEACB;
+    --sky-note:#AEE3F5;
+    --pink-note:#F6C6DE;
+    --lilac-note:#DACBF2;
+    --white:#FFFBEF;
+  }
+
+  * { box-sizing: border-box; }
+
+  body{
+    background: var(--paper);
+    background-image:
+      linear-gradient(120deg, rgba(255,131,72,0.09), rgba(63,182,232,0.09) 35%, rgba(255,111,160,0.09) 65%, rgba(63,163,77,0.09)),
+      radial-gradient(circle at 12% 22%, rgba(169,113,63,0.10) 0, rgba(169,113,63,0.10) 3px, transparent 3px),
+      radial-gradient(circle at 68% 62%, rgba(169,113,63,0.08) 0, rgba(169,113,63,0.08) 3px, transparent 3px),
+      radial-gradient(circle at 40% 85%, rgba(169,113,63,0.09) 0, rgba(169,113,63,0.09) 3px, transparent 3px),
+      radial-gradient(circle at 90% 15%, rgba(169,113,63,0.07) 0, rgba(169,113,63,0.07) 3px, transparent 3px);
+    background-size: 100% 100%, 140px 140px, 180px 180px, 160px 160px, 200px 200px;
+    color: var(--ink);
+    font-family: "Kosugi Maru", "Hiragino Maru Gothic ProN", "BIZ UDPGothic", sans-serif;
+    font-size: 18px;
+    line-height: 1.65;
+    padding-inline: 16px;
+    padding-block: 28px 60px;
+  }
+
+  h1, h2, h3 { font-family: "Mochiy Pop One", "Kosugi Maru", sans-serif; }
+
+  .scene{
+    max-width: 1200px;
+    margin-inline: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 34px;
+  }
+
+  /* ---------- bunting ---------- */
+  .bunting{
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    padding-top: 4px;
+    overflow: hidden;
+  }
+  .bunting span{
+    width: 26px;
+    height: 34px;
+    clip-path: polygon(0 0, 100% 0, 50% 100%);
+    flex: 0 0 auto;
+    transform: translateY(-2px);
+  }
+  .bunting span:nth-child(6n+1){ background: var(--tangerine); }
+  .bunting span:nth-child(6n+2){ background: var(--sky); }
+  .bunting span:nth-child(6n+3){ background: var(--sun); }
+  .bunting span:nth-child(6n+4){ background: var(--bubblegum); }
+  .bunting span:nth-child(6n+5){ background: var(--grass); }
+  .bunting span:nth-child(6n+6){ background: var(--grape); }
+
+  /* ---------- signboard ---------- */
+  .signboard{
+    position: relative;
+    text-align: center;
+    background:
+      repeating-linear-gradient(100deg, var(--wood) 0px, var(--wood) 14px, var(--wood-dark) 14px, var(--wood-dark) 28px);
+    border: 6px solid var(--ink);
+    border-radius: 26px 26px 30px 30px / 34px 34px 22px 22px;
+    padding: 30px 20px 26px;
+    box-shadow: 0 10px 0 var(--ink-soft), 0 16px 26px rgba(59,42,26,0.35);
+  }
+  .signboard::before, .signboard::after{
+    content: "";
+    position: absolute;
+    top: 14px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #f4d98a, #8a5a1f 80%);
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,0.35);
+  }
+  .signboard::before{ left: 18px; }
+  .signboard::after{ right: 18px; }
+
+  .mascot-row{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(6px, 2.4vw, 22px);
+    flex-wrap: wrap;
+  }
+  .mascot{
+    font-size: clamp(2.8rem, 8.5vw, 4.8rem);
+    display: inline-block;
+    animation: sway 3.4s ease-in-out infinite;
+    filter: drop-shadow(0 4px 3px rgba(0,0,0,0.35));
+  }
+  .mascot:nth-child(2){ animation-delay: .4s; }
+  .mascot:nth-child(3){ animation-delay: .8s; }
+  .mascot:nth-child(4){ animation-delay: 1.2s; }
+  @media (prefers-reduced-motion: reduce){ .mascot{ animation: none; } }
+  @keyframes sway{
+    0%, 100% { transform: rotate(-6deg) translateY(0); }
+    50% { transform: rotate(6deg) translateY(-6px); }
+  }
+
+  .signboard h1{
+    font-size: clamp(2.1rem, 6.4vw, 3.8rem);
+    margin: 6px 0 4px;
+    letter-spacing: .02em;
+    text-wrap: balance;
+  }
+  .signboard h1 span{
+    text-shadow:
+      3px 3px 0 var(--ink),
+      -2px -2px 0 var(--ink),
+      2px -2px 0 var(--ink),
+      -2px 2px 0 var(--ink),
+      0 8px 14px rgba(0,0,0,.35);
+  }
+  .signboard h1 .c1{ color: var(--white); }
+  .signboard h1 .c2{ color: var(--sun); }
+  .signboard h1 .c3{ color: var(--bubblegum); }
+  .signboard h1 .c4{ color: var(--sky); }
+
+  .nature-strip{
+    display: flex;
+    justify-content: space-evenly;
+    align-items: center;
+    font-size: clamp(1.8rem, 5.5vw, 3rem);
+    padding: 0 6px;
+  }
+  .nature-strip span{ animation: sway 4.2s ease-in-out infinite; display: inline-block; }
+  .nature-strip span:nth-child(2n){ animation-delay: .7s; }
+  .nature-strip span:nth-child(3n){ animation-delay: 1.4s; }
+  @media (prefers-reduced-motion: reduce){ .nature-strip span{ animation: none; } }
+  .signboard p.tagline{
+    color: var(--sun);
+    font-size: clamp(1rem, 2.6vw, 1.35rem);
+    font-weight: bold;
+    text-shadow: 2px 2px 0 var(--ink);
+    margin: 0;
+  }
+
+  /* ---------- post desk ---------- */
+  .post-desk{
+    background: var(--white);
+    border: 5px solid var(--ink);
+    border-radius: 26px 40px 26px 40px;
+    padding: clamp(20px, 4vw, 36px);
+    box-shadow: 0 0 0 5px var(--sun), 10px 10px 0 rgba(59,42,26,0.18);
+    position: relative;
+  }
+  .desk-header{
+    font-family: "Mochiy Pop One", sans-serif;
+    font-size: clamp(1.4rem, 3.4vw, 2rem);
+    color: var(--grass-deep);
+    text-align: center;
+    margin-bottom: 20px;
+    text-wrap: balance;
+  }
+
+  #postForm{ display: flex; flex-direction: column; gap: 20px; }
+
+  #postForm label{
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-weight: bold;
+    font-size: 1.1rem;
+    color: var(--ink-soft);
+  }
+
+  #postForm input[type="text"],
+  #postForm textarea{
+    font-family: inherit;
+    font-size: 1.15rem;
+    padding: 14px 16px;
+    border: 3px solid var(--ink);
+    border-radius: 16px;
+    background: var(--paper);
+    color: var(--ink);
+    resize: vertical;
+  }
+  #postForm input[type="text"]:focus,
+  #postForm textarea:focus{
+    outline: 4px solid var(--sky);
+    outline-offset: 1px;
+  }
+  #postForm textarea{ min-height: 110px; }
+
+  .picker-label{
+    display: block;
+    font-weight: bold;
+    font-size: 1.1rem;
+    color: var(--ink-soft);
+    margin-bottom: 10px;
+  }
+  .animal-grid{
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+    gap: 12px;
+  }
+  .animal-btn{
+    font-size: 2.4rem;
+    line-height: 1;
+    padding: 12px 0;
+    background: var(--paper);
+    border: 3px solid var(--ink);
+    border-radius: 16px;
+    cursor: pointer;
+    transition: transform .15s ease, background .15s ease, box-shadow .15s ease;
+  }
+  .animal-btn:hover{ transform: translateY(-3px); }
+  .animal-btn[aria-pressed="true"]{
+    background: var(--sun);
+    box-shadow: 0 0 0 4px var(--tangerine);
+    transform: scale(1.08) rotate(-3deg);
+  }
+
+  #postBtn{
+    align-self: center;
+    font-family: "Mochiy Pop One", sans-serif;
+    font-size: clamp(1.1rem, 3vw, 1.5rem);
+    color: var(--white);
+    background: var(--tangerine);
+    border: 4px solid var(--ink);
+    border-radius: 999px;
+    padding: 16px 42px;
+    cursor: pointer;
+    box-shadow: 0 6px 0 var(--wood-dark);
+    transition: transform .1s ease, box-shadow .1s ease;
+  }
+  #postBtn:hover{ transform: translateY(2px); box-shadow: 0 4px 0 var(--wood-dark); }
+  #postBtn:active{ transform: translateY(6px); box-shadow: 0 0 0 var(--wood-dark); }
+  #postBtn:disabled{ opacity: .6; cursor: default; transform: none; }
+
+  .status{
+    text-align: center;
+    font-weight: bold;
+    color: var(--grass-deep);
+    font-size: 1.05rem;
+  }
+  .offline-note{
+    text-align: center;
+    font-size: .95rem;
+    color: var(--ink-soft);
+    background: var(--sky-note);
+    border: 2px dashed var(--ink-soft);
+    border-radius: 12px;
+    padding: 8px 14px;
+  }
+
+  /* ---------- board ---------- */
+  .board-wrap{
+    background: var(--cork);
+    background-image:
+      radial-gradient(circle at 20% 30%, rgba(124,79,39,0.28) 0 5px, transparent 6px),
+      radial-gradient(circle at 75% 20%, rgba(124,79,39,0.24) 0 4px, transparent 5px),
+      radial-gradient(circle at 50% 70%, rgba(124,79,39,0.26) 0 5px, transparent 6px),
+      radial-gradient(circle at 85% 80%, rgba(124,79,39,0.22) 0 4px, transparent 5px),
+      radial-gradient(circle at 10% 85%, rgba(124,79,39,0.24) 0 4px, transparent 5px),
+      radial-gradient(circle at 35% 12%, rgba(124,79,39,0.22) 0 4px, transparent 5px);
+    background-size: 90px 90px;
+    border: 10px solid var(--wood-dark);
+    border-radius: 20px;
+    padding: clamp(16px, 4vw, 40px);
+    box-shadow: inset 0 0 30px rgba(60,35,10,0.35), 10px 10px 0 rgba(59,42,26,0.18);
+  }
+
+  .board{
+    column-count: 1;
+    column-gap: 26px;
+  }
+  @media (min-width: 620px){ .board{ column-count: 2; } }
+  @media (min-width: 940px){ .board{ column-count: 3; } }
+  @media (min-width: 1280px){ .board{ column-count: 4; } }
+
+  .empty-state{
+    column-span: all;
+    width: 100%;
+    font-family: "Mochiy Pop One", sans-serif;
+    font-size: clamp(1.1rem, 3vw, 1.5rem);
+    text-align: center;
+    color: var(--white);
+    text-shadow: 2px 2px 0 var(--wood-dark);
+    padding: 40px 10px;
+  }
+
+  .note{
+    break-inside: avoid;
+    display: block;
+    width: 100%;
+    margin-bottom: 26px;
+    background: var(--bg, var(--cream-note));
+    border: 3px solid rgba(59,42,26,0.55);
+    padding: 22px 20px 20px;
+    position: relative;
+    transform: rotate(var(--rot, 0deg));
+    box-shadow: 6px 8px 14px rgba(40,25,10,0.32);
+    color: var(--ink);
+  }
+  .note.shape-a{ border-radius: 6px 24px 8px 22px; }
+  .note.shape-b{ border-radius: 24px 6px 22px 8px; }
+  .note.shape-c{ border-radius: 4px 4px 4px 4px / 16px 16px 16px 16px; }
+  .note.shape-d{ border-radius: 30px 30px 4px 4px; }
+
+  .note .pin{
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fff, var(--pin, #b3272c) 75%);
+    box-shadow: 0 3px 4px rgba(0,0,0,0.4);
+  }
+  .note.deco-tapeL::before, .note.deco-tapeR::before{
+    content: "";
+    position: absolute;
+    top: -14px;
+    width: 66px;
+    height: 26px;
+    background: var(--tape, rgba(255,255,255,0.6));
+    border: 1px solid rgba(59,42,26,0.25);
+  }
+  .note.deco-tapeL::before{ left: -14px; transform: rotate(-18deg); }
+  .note.deco-tapeR::before{ right: -14px; left: auto; transform: rotate(18deg); }
+
+  .note-head{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .note-animal{ font-size: 2.7rem; flex: 0 0 auto; }
+  .note-name{
+    font-family: "Mochiy Pop One", sans-serif;
+    font-size: 1.15rem;
+    color: var(--ink);
+    word-break: break-word;
+  }
+  .note-time{
+    font-size: .85rem;
+    color: var(--ink-soft);
+    margin-left: auto;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .note-message{
+    font-size: 1.15rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  footer.credit{
+    text-align: center;
+    font-size: .9rem;
+    color: var(--ink-soft);
+  }
+</style>
+</head>
+<body>
+<div class="scene">
+  <div class="bunting" aria-hidden="true">
+    <span></span><span></span><span></span><span></span><span></span><span></span>
+    <span></span><span></span><span></span><span></span><span></span><span></span>
+    <span></span><span></span><span></span><span></span><span></span><span></span>
+  </div>
+
+  <header class="signboard">
+    <div class="mascot-row" aria-hidden="true">
+      <span class="mascot">🦁</span>
+      <span class="mascot">🐘</span>
+      <span class="mascot">🦒</span>
+      <span class="mascot">🐵</span>
+    </div>
+    <h1><span class="c1">みんなの</span><br><span class="c2">動</span><span class="c3">物</span><span class="c4">園</span><span class="c1">掲示板</span></h1>
+    <p class="tagline">自由に書いて、貼って、笑おう🐾</p>
+  </header>
+
+  <div class="nature-strip" aria-hidden="true">
+    <span>☀️</span><span>🌳</span><span>🌈</span><span>🌴</span><span>☁️</span>
+  </div>
+
+  <section class="post-desk" aria-labelledby="deskHeading">
+    <h2 class="desk-header" id="deskHeading">📮 ひとこと、残していく？</h2>
+    <form id="postForm">
+      <label for="nameInput">お名前（ニックネームでOK）
+        <input id="nameInput" type="text" maxlength="20" placeholder="例：ぞうさん先輩" autocomplete="off">
+      </label>
+
+      <div>
+        <span class="picker-label" id="animalLabel">あなたのスタンプを選んでね</span>
+        <div class="animal-grid" id="animalGrid" role="group" aria-labelledby="animalLabel"></div>
+      </div>
+
+      <label for="messageInput">メッセージ
+        <textarea id="messageInput" maxlength="200" placeholder="今日あった楽しいこと、なんでもどうぞ！（200文字まで）"></textarea>
+      </label>
+
+      <button type="submit" id="postBtn">🐾 この指とまれ！貼り出す</button>
+      <p class="status" id="formStatus" role="status" hidden></p>
+      <p class="offline-note" id="offlineNote" hidden>オフラインモードだよ。投稿はこのブラウザだけに残るよ🐹</p>
+    </form>
+  </section>
+
+  <div class="nature-strip" aria-hidden="true">
+    <span>🐾</span><span>🌻</span><span>🐾</span><span>🌼</span><span>🐾</span>
+  </div>
+
+  <section class="board-wrap" aria-labelledby="boardHeading">
+    <h2 id="boardHeading" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">みんなの投稿</h2>
+    <div class="board" id="board">
+      <p class="empty-state" id="emptyState" hidden>まだ何も貼られてないよ。<br>最初の一枚、君が飾ってね🐾</p>
+    </div>
+  </section>
+
+  <footer class="credit">🦓 みんなでつくる、動物園の掲示板 🦋</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var ANIMALS = [
+    { emoji: "🦁", label: "ライオン" },
+    { emoji: "🐘", label: "ゾウ" },
+    { emoji: "🦒", label: "キリン" },
+    { emoji: "🐵", label: "サル" },
+    { emoji: "🐧", label: "ペンギン" },
+    { emoji: "🦓", label: "シマウマ" },
+    { emoji: "🐼", label: "パンダ" },
+    { emoji: "🦊", label: "キツネ" },
+    { emoji: "🐰", label: "ウサギ" },
+    { emoji: "🦉", label: "フクロウ" },
+    { emoji: "🐸", label: "カエル" },
+    { emoji: "🦋", label: "チョウ" }
+  ];
+
+  var NOTE_COLORS = ["#FFE9A8", "#FFC9A1", "#BCEACB", "#AEE3F5", "#F6C6DE", "#DACBF2"];
+  var NOTE_ROTATIONS = [-4, 2, -2, 4, -3, 1.5, 3, -1.5];
+  var NOTE_SHAPES = ["shape-a", "shape-b", "shape-c", "shape-d"];
+  var NOTE_DECOS = ["pin", "deco-tapeL", "pin", "deco-tapeR"];
+  var PIN_COLORS = ["#E8483C", "#3FA34D", "#3FB6E8", "#FF8348", "#8E63C9", "#FF6FA0"];
+  var TAPE_COLORS = ["rgba(255,216,120,0.7)", "rgba(174,227,245,0.7)", "rgba(246,198,222,0.7)", "rgba(188,234,203,0.7)"];
+
+  var LOCAL_KEY = "zoo_board_posts_v1";
+  var PREF_KEY = "zoo_board_pref_v1";
+
+  var animalGrid = document.getElementById("animalGrid");
+  var nameInput = document.getElementById("nameInput");
+  var messageInput = document.getElementById("messageInput");
+  var form = document.getElementById("postForm");
+  var postBtn = document.getElementById("postBtn");
+  var formStatus = document.getElementById("formStatus");
+  var offlineNote = document.getElementById("offlineNote");
+  var board = document.getElementById("board");
+  var emptyState = document.getElementById("emptyState");
+
+  var selectedAnimal = ANIMALS[0].emoji;
+  var db = null;
+
+  function safeGet(key){
+    try { return window.localStorage.getItem(key); } catch (e) { return null; }
+  }
+  function safeSet(key, value){
+    try { window.localStorage.setItem(key, value); } catch (e) { /* ignore */ }
+  }
+
+  function loadPref(){
+    var raw = safeGet(PREF_KEY);
+    if (!raw) return;
+    try {
+      var pref = JSON.parse(raw);
+      if (pref && typeof pref.name === "string") nameInput.value = pref.name;
+      if (pref && typeof pref.animal === "string") selectedAnimal = pref.animal;
+    } catch (e) { /* ignore */ }
+  }
+  function savePref(name, animal){
+    safeSet(PREF_KEY, JSON.stringify({ name: name, animal: animal }));
+  }
+
+  function loadLocalPosts(){
+    var raw = safeGet(LOCAL_KEY);
+    if (!raw) return [];
+    try {
+      var list = JSON.parse(raw);
+      return Array.isArray(list) ? list : [];
+    } catch (e) { return []; }
+  }
+  function saveLocalPosts(list){
+    safeSet(LOCAL_KEY, JSON.stringify(list.slice(0, 200)));
+  }
+
+  function buildAnimalGrid(){
+    ANIMALS.forEach(function(a){
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "animal-btn";
+      btn.textContent = a.emoji;
+      btn.setAttribute("aria-label", a.label);
+      btn.setAttribute("aria-pressed", a.emoji === selectedAnimal ? "true" : "false");
+      btn.addEventListener("click", function(){
+        selectedAnimal = a.emoji;
+        Array.prototype.forEach.call(animalGrid.children, function(child){
+          child.setAttribute("aria-pressed", child === btn ? "true" : "false");
+        });
+      });
+      animalGrid.appendChild(btn);
+    });
+  }
+
+  function formatTime(ts){
+    try {
+      var d = new Date(ts);
+      if (isNaN(d.getTime())) return "";
+      return d.toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    } catch (e) { return ""; }
+  }
+
+  function showStatus(msg){
+    formStatus.textContent = msg;
+    formStatus.hidden = false;
+    window.clearTimeout(showStatus._t);
+    showStatus._t = window.setTimeout(function(){ formStatus.hidden = true; }, 3200);
+  }
+
+  function renderPosts(list){
+    var existing = board.querySelectorAll(".note");
+    Array.prototype.forEach.call(existing, function(n){ n.remove(); });
+
+    if (!list.length){
+      emptyState.hidden = false;
+      return;
+    }
+    emptyState.hidden = true;
+
+    list.forEach(function(post, i){
+      var note = document.createElement("article");
+      note.className = "note " + NOTE_SHAPES[i % NOTE_SHAPES.length] + " deco-" + NOTE_DECOS[i % NOTE_DECOS.length];
+      note.style.setProperty("--bg", NOTE_COLORS[i % NOTE_COLORS.length]);
+      note.style.setProperty("--rot", NOTE_ROTATIONS[i % NOTE_ROTATIONS.length] + "deg");
+      note.style.setProperty("--pin", PIN_COLORS[i % PIN_COLORS.length]);
+      note.style.setProperty("--tape", TAPE_COLORS[i % TAPE_COLORS.length]);
+
+      if (NOTE_DECOS[i % NOTE_DECOS.length] === "pin"){
+        var pin = document.createElement("span");
+        pin.className = "pin";
+        pin.setAttribute("aria-hidden", "true");
+        note.appendChild(pin);
+      }
+
+      var head = document.createElement("div");
+      head.className = "note-head";
+
+      var animalSpan = document.createElement("span");
+      animalSpan.className = "note-animal";
+      animalSpan.setAttribute("aria-hidden", "true");
+      animalSpan.textContent = post.animal || "🐾";
+      head.appendChild(animalSpan);
+
+      var nameSpan = document.createElement("span");
+      nameSpan.className = "note-name";
+      nameSpan.textContent = post.name || "名前なしどうぶつ";
+      head.appendChild(nameSpan);
+
+      var timeSpan = document.createElement("span");
+      timeSpan.className = "note-time";
+      timeSpan.textContent = formatTime(post.createdAt);
+      head.appendChild(timeSpan);
+
+      note.appendChild(head);
+
+      var msg = document.createElement("p");
+      msg.className = "note-message";
+      msg.textContent = post.message || "";
+      note.appendChild(msg);
+
+      board.appendChild(note);
+    });
+  }
+
+  function initDb(){
+    var claude = window.claude;
+    if (!claude || typeof claude.use !== "function"){
+      offlineNote.hidden = false;
+      renderPosts(loadLocalPosts());
+      return;
+    }
+    claude.use("db").then(function(handle){
+      db = handle;
+      if (!db){
+        offlineNote.hidden = false;
+        renderPosts(loadLocalPosts());
+        return;
+      }
+      var q = db.collection("posts").orderBy("createdAt", "desc").limit(200);
+      q.onSnapshot(
+        function(snap){
+          var list = snap.docs.map(function(d){
+            var data = d.data() || {};
+            return {
+              id: d.id,
+              name: data.name,
+              animal: data.animal,
+              message: data.message,
+              createdAt: data.createdAt
+            };
+          });
+          renderPosts(list);
+        },
+        function(err){
+          console.error("board subscription error", err);
+          offlineNote.hidden = false;
+          renderPosts(loadLocalPosts());
+        }
+      );
+    }).catch(function(err){
+      console.error("db init failed", err);
+      offlineNote.hidden = false;
+      renderPosts(loadLocalPosts());
+    });
+  }
+
+  form.addEventListener("submit", function(e){
+    e.preventDefault();
+    var name = nameInput.value.trim() || "名前なしどうぶつ";
+    var message = messageInput.value.trim();
+    if (!message){
+      showStatus("メッセージを書いてね🐾");
+      return;
+    }
+    postBtn.disabled = true;
+    var payload = { name: name, animal: selectedAnimal, message: message, createdAt: Date.now() };
+
+    var done = function(){ postBtn.disabled = false; };
+
+    if (db){
+      db.collection("posts").add(payload).then(function(){
+        savePref(name, selectedAnimal);
+        messageInput.value = "";
+        showStatus("貼り出したよ！🎉");
+      }).catch(function(err){
+        console.error("post failed", err);
+        showStatus("うまく貼れなかった…もう一度試してね");
+      }).then(done, done);
+    } else {
+      var list = loadLocalPosts();
+      list.unshift({
+        id: "local-" + Date.now() + "-" + Math.random().toString(36).slice(2),
+        name: name, animal: selectedAnimal, message: message, createdAt: Date.now()
+      });
+      saveLocalPosts(list);
+      renderPosts(list);
+      savePref(name, selectedAnimal);
+      messageInput.value = "";
+      showStatus("貼り出したよ！🎉（このブラウザだけに保存）");
+      done();
+    }
+  });
+
+  loadPref();
+  buildAnimalGrid();
+  initDb();
+})();
+</script>
+</body>
+</html>
