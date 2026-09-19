@@ -428,7 +428,7 @@
 
       <button type="submit" id="postBtn">🐾 この指とまれ！貼り出す</button>
       <p class="status" id="formStatus" role="status" hidden></p>
-      <p class="offline-note" id="offlineNote" hidden>オフラインモードだよ。投稿はこのブラウザだけに残るよ🐹</p>
+      <p class="offline-note" id="offlineNote" hidden>Supabase未接続だよ。今は投稿がこのブラウザだけに残るモードだよ🐹</p>
     </form>
   </section>
 
@@ -446,9 +446,16 @@
   <footer class="credit">🦓 みんなでつくる、動物園の掲示板 🦋</footer>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js"></script>
 <script>
 (function(){
   "use strict";
+
+  // ここにSupabaseプロジェクトのURLとanon(公開)キーを貼ってください。
+  // Project Settings → API で確認できます。
+  var SUPABASE_URL = "YOUR_SUPABASE_URL";
+  var SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+  var MESSAGES_TABLE = "messages";
 
   var ANIMALS = [
     { emoji: "🦁", label: "ライオン" },
@@ -472,8 +479,9 @@
   var PIN_COLORS = ["#E8483C", "#3FA34D", "#3FB6E8", "#FF8348", "#8E63C9", "#FF6FA0"];
   var TAPE_COLORS = ["rgba(255,216,120,0.7)", "rgba(174,227,245,0.7)", "rgba(246,198,222,0.7)", "rgba(188,234,203,0.7)"];
 
-  var LOCAL_KEY = "zoo_board_posts_v1";
+  var LOCAL_KEY = "zoo_board_messages_v1";
   var PREF_KEY = "zoo_board_pref_v1";
+  var DEFAULT_NAME = "名前なしどうぶつ";
 
   var animalGrid = document.getElementById("animalGrid");
   var nameInput = document.getElementById("nameInput");
@@ -486,7 +494,7 @@
   var emptyState = document.getElementById("emptyState");
 
   var selectedAnimal = ANIMALS[0].emoji;
-  var db = null;
+  var supabaseClient = null;
 
   function safeGet(key){
     try { return window.localStorage.getItem(key); } catch (e) { return null; }
@@ -508,7 +516,7 @@
     safeSet(PREF_KEY, JSON.stringify({ name: name, animal: animal }));
   }
 
-  function loadLocalPosts(){
+  function loadLocalMessages(){
     var raw = safeGet(LOCAL_KEY);
     if (!raw) return [];
     try {
@@ -516,7 +524,7 @@
       return Array.isArray(list) ? list : [];
     } catch (e) { return []; }
   }
-  function saveLocalPosts(list){
+  function saveLocalMessages(list){
     safeSet(LOCAL_KEY, JSON.stringify(list.slice(0, 200)));
   }
 
@@ -553,6 +561,17 @@
     showStatus._t = window.setTimeout(function(){ formStatus.hidden = true; }, 3200);
   }
 
+  // 保存する "name" 列には "🦁 たろう" のように動物スタンプを先頭にくっつけて入れる。
+  // 表示するときにここで先頭の絵文字とそれ以外の名前を分離する。
+  function splitAnimalName(display){
+    var text = display || "";
+    var match = /^(\p{Extended_Pictographic}️?)\s*(.*)$/u.exec(text);
+    if (match){
+      return { animal: match[1], name: match[2] || DEFAULT_NAME };
+    }
+    return { animal: "🐾", name: text || DEFAULT_NAME };
+  }
+
   function renderPosts(list){
     var existing = board.querySelectorAll(".note");
     Array.prototype.forEach.call(existing, function(n){ n.remove(); });
@@ -578,107 +597,127 @@
         note.appendChild(pin);
       }
 
+      var parsed = splitAnimalName(post.name);
+
       var head = document.createElement("div");
       head.className = "note-head";
 
       var animalSpan = document.createElement("span");
       animalSpan.className = "note-animal";
       animalSpan.setAttribute("aria-hidden", "true");
-      animalSpan.textContent = post.animal || "🐾";
+      animalSpan.textContent = parsed.animal;
       head.appendChild(animalSpan);
 
       var nameSpan = document.createElement("span");
       nameSpan.className = "note-name";
-      nameSpan.textContent = post.name || "名前なしどうぶつ";
+      nameSpan.textContent = parsed.name;
       head.appendChild(nameSpan);
 
       var timeSpan = document.createElement("span");
       timeSpan.className = "note-time";
-      timeSpan.textContent = formatTime(post.createdAt);
+      timeSpan.textContent = formatTime(post.created_at);
       head.appendChild(timeSpan);
 
       note.appendChild(head);
 
       var msg = document.createElement("p");
       msg.className = "note-message";
-      msg.textContent = post.message || "";
+      msg.textContent = post.body || "";
       note.appendChild(msg);
 
       board.appendChild(note);
     });
   }
 
-  function initDb(){
-    var claude = window.claude;
-    if (!claude || typeof claude.use !== "function"){
-      offlineNote.hidden = false;
-      renderPosts(loadLocalPosts());
+  function supabaseConfigured(){
+    return SUPABASE_URL && SUPABASE_ANON_KEY &&
+      SUPABASE_URL.indexOf("YOUR_") !== 0 &&
+      SUPABASE_ANON_KEY.indexOf("YOUR_") !== 0;
+  }
+
+  function goOffline(){
+    offlineNote.hidden = false;
+    renderPosts(loadLocalMessages());
+  }
+
+  function fetchAndRenderRemote(){
+    supabaseClient
+      .from(MESSAGES_TABLE)
+      .select("id, name, body, created_at")
+      .order("created_at", { ascending: false })
+      .limit(200)
+      .then(function(res){
+        if (res.error){
+          console.error("supabase select error", res.error);
+          return;
+        }
+        renderPosts(res.data || []);
+      });
+  }
+
+  function initMessages(){
+    if (!supabaseConfigured() || !window.supabase || typeof window.supabase.createClient !== "function"){
+      goOffline();
       return;
     }
-    claude.use("db").then(function(handle){
-      db = handle;
-      if (!db){
-        offlineNote.hidden = false;
-        renderPosts(loadLocalPosts());
-        return;
-      }
-      var q = db.collection("posts").orderBy("createdAt", "desc").limit(200);
-      q.onSnapshot(
-        function(snap){
-          var list = snap.docs.map(function(d){
-            var data = d.data() || {};
-            return {
-              id: d.id,
-              name: data.name,
-              animal: data.animal,
-              message: data.message,
-              createdAt: data.createdAt
-            };
-          });
-          renderPosts(list);
-        },
-        function(err){
-          console.error("board subscription error", err);
-          offlineNote.hidden = false;
-          renderPosts(loadLocalPosts());
-        }
-      );
-    }).catch(function(err){
-      console.error("db init failed", err);
-      offlineNote.hidden = false;
-      renderPosts(loadLocalPosts());
-    });
+
+    try {
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    } catch (e) {
+      console.error("supabase init failed", e);
+      supabaseClient = null;
+    }
+
+    if (!supabaseClient){
+      goOffline();
+      return;
+    }
+
+    fetchAndRenderRemote();
+
+    supabaseClient
+      .channel("public:" + MESSAGES_TABLE)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: MESSAGES_TABLE }, function(){
+        fetchAndRenderRemote();
+      })
+      .subscribe();
   }
 
   form.addEventListener("submit", function(e){
     e.preventDefault();
-    var name = nameInput.value.trim() || "名前なしどうぶつ";
+    var name = nameInput.value.trim() || DEFAULT_NAME;
     var message = messageInput.value.trim();
     if (!message){
       showStatus("メッセージを書いてね🐾");
       return;
     }
     postBtn.disabled = true;
-    var payload = { name: name, animal: selectedAnimal, message: message, createdAt: Date.now() };
+    var displayName = (selectedAnimal || "🐾") + " " + name;
 
     var done = function(){ postBtn.disabled = false; };
 
-    if (db){
-      db.collection("posts").add(payload).then(function(){
-        savePref(name, selectedAnimal);
-        messageInput.value = "";
-        showStatus("貼り出したよ！🎉");
-      }).catch(function(err){
-        console.error("post failed", err);
-        showStatus("うまく貼れなかった…もう一度試してね");
-      }).then(done, done);
+    if (supabaseClient){
+      supabaseClient
+        .from(MESSAGES_TABLE)
+        .insert({ name: displayName, body: message })
+        .then(function(res){
+          if (res.error){
+            console.error("insert failed", res.error);
+            showStatus("うまく貼れなかった…もう一度試してね");
+          } else {
+            savePref(name, selectedAnimal);
+            messageInput.value = "";
+            showStatus("貼り出したよ！🎉");
+          }
+        })
+        .then(done, done);
     } else {
-      var list = loadLocalPosts();
+      var list = loadLocalMessages();
       list.unshift({
         id: "local-" + Date.now() + "-" + Math.random().toString(36).slice(2),
-        name: name, animal: selectedAnimal, message: message, createdAt: Date.now()
+        name: displayName, body: message, created_at: new Date().toISOString()
       });
-      saveLocalPosts(list);
+      saveLocalMessages(list);
       renderPosts(list);
       savePref(name, selectedAnimal);
       messageInput.value = "";
@@ -689,7 +728,7 @@
 
   loadPref();
   buildAnimalGrid();
-  initDb();
+  initMessages();
 })();
 </script>
 </body>
