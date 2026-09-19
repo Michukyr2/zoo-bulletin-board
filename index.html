@@ -255,6 +255,17 @@
     margin: 0 0 16px;
     color: var(--ink);
   }
+  .auth-hint{
+    text-align: center;
+    font-size: .95rem;
+    font-weight: bold;
+    color: var(--grass-deep);
+    background: var(--white);
+    border: 2px dashed var(--grass-deep);
+    border-radius: 12px;
+    padding: 8px 14px;
+    margin: 0 0 16px;
+  }
   #authForm{ display: flex; flex-direction: column; gap: 16px; }
   #authForm label{
     display: flex;
@@ -544,6 +555,7 @@
 
     <div class="auth-panel" id="authPanel" hidden>
       <p class="auth-lead">投稿するには、メールでログインしてね🔑</p>
+      <p class="auth-hint" id="authHint" hidden></p>
       <form id="authForm">
         <label for="authEmail">メールアドレス
           <input id="authEmail" type="email" autocomplete="email" required>
@@ -640,6 +652,7 @@
 
   var LOCAL_KEY = "zoo_board_messages_v1";
   var PREF_KEY = "zoo_board_pref_v1";
+  var LAST_METHOD_KEY = "zoo_board_last_login_method_v1";
   var DEFAULT_NAME = "名前なしどうぶつ";
 
   var animalGrid = document.getElementById("animalGrid");
@@ -656,6 +669,7 @@
   var accountEmail = document.getElementById("accountEmail");
   var signOutBtn = document.getElementById("signOutBtn");
   var authPanel = document.getElementById("authPanel");
+  var authHint = document.getElementById("authHint");
   var authForm = document.getElementById("authForm");
   var authEmail = document.getElementById("authEmail");
   var authPassword = document.getElementById("authPassword");
@@ -805,14 +819,30 @@
     authStatus.hidden = false;
   }
 
+  var METHOD_LABELS = { google: "Googleでログイン", email: "メール＋パスワード" };
+
+  function showLastMethodHint(){
+    var method = safeGet(LAST_METHOD_KEY);
+    var label = method && METHOD_LABELS[method];
+    if (label){
+      authHint.textContent = "💡 前回は「" + label + "」を使ったよ";
+      authHint.hidden = false;
+    } else {
+      authHint.hidden = true;
+    }
+  }
+
   function updateAuthUI(session){
     var loggedIn = !!(session && session.user);
     accountBar.hidden = !loggedIn;
     if (loggedIn){
       accountEmail.textContent = "ログイン中: " + (session.user.email || "");
+      var provider = session.user.app_metadata && session.user.app_metadata.provider;
+      if (provider){ safeSet(LAST_METHOD_KEY, provider); }
     }
     authPanel.hidden = loggedIn;
     form.hidden = !loggedIn;
+    if (!loggedIn){ showLastMethodHint(); }
   }
 
   authForm.addEventListener("submit", function(e){
