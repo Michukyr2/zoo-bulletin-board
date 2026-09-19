@@ -4,7 +4,7 @@
 
 ## 公開ページ
 
-GitHub Pages: (このあと有効化して追記します)
+GitHub Pages: https://michukyr2.github.io/zoo-bulletin-board/
 
 ## 投稿の保存について
 
